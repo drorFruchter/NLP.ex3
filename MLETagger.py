@@ -1,15 +1,10 @@
-from nltk.metrics.association import TOTAL
-
 from BaseTagger import BaseTagger
 from collections import defaultdict
 from itertools import chain
 
-KNOWN = 0
-UNKNOWN = 1
-TOTAL = 2
-
 class MLETagger(BaseTagger):
     def __init__(self):
+        super()
         self.word_tag_counts = defaultdict(lambda: defaultdict(int))
 
         self.MLE_tags = {}
@@ -48,8 +43,3 @@ class MLETagger(BaseTagger):
         total_accuracy = 1 if total_samples == 1 else correct_total / total_samples
 
         return known_accuracy, unknown_accuracy, total_accuracy
-
-    def error_rate(self,test_set):
-        predictions = self.predict(test_set)
-        model_accuracy = self.accuracy(test_set, predictions)
-        return 1 - model_accuracy[KNOWN], 1 - model_accuracy[UNKNOWN], 1 - model_accuracy[TOTAL]

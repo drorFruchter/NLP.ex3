@@ -2,8 +2,8 @@ import nltk
 from nltk.corpus import brown
 nltk.download('brown')
 from sklearn.model_selection import train_test_split
-from collections import defaultdict
 from MLETagger import MLETagger
+from BIgramHMMTagger import BIgramHMMTagger
 
 
 def load_data():
@@ -20,6 +20,11 @@ if __name__ == '__main__':
     train_set, test_set = load_data()
 
     #a
-    MLE_model = MLETagger()
-    MLE_model.fit(train_set)
-    print(MLE_model.error_rate(test_set))
+    # MLE_model = MLETagger()
+    # MLE_model.fit(train_set)
+    # print(MLE_model.error_rate(test_set))
+
+    #b
+    BIgramHMMTagger = BIgramHMMTagger()
+    BIgramHMMTagger.fit(train_set)
+    print(BIgramHMMTagger.error_rate(test_set))
