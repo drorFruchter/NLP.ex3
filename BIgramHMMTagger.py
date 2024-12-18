@@ -5,4 +5,4 @@ class BIgramHMMTagger(BaseTagger):
         self.tagger = tagger
 
     def fit(self, train_set):
-        self.tagger.fit(train_set)
+        pass
