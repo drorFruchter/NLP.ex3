@@ -9,7 +9,7 @@ from BIgramHMMTagger import BIgramHMMTagger
 def load_data():
     dataset = brown.tagged_sents(categories='news')
     def simplify_tag(tag):
-        return tag.split('+')[0].split('-')[0]
+        return tag.split('+')[0].split('-')[0].replace('$','').replace('*','')
 
     dataset = [[(word, simplify_tag(tag)) for word, tag in sent] for sent in dataset]
     train_set, test_set = train_test_split(dataset, test_size=0.1)

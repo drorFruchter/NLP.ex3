@@ -1,9 +1,10 @@
-from BaseTagger import BaseTagger
+from BaseTagger import BaseTagger, UNKNOWN
 from collections import defaultdict
 
 START_WORD = "<s>"
 START_TAG = "<START>"
 END_TAG = "<END>"
+UNKNOWN_TAG = "UNKNOWN"
 
 class BIgramHMMTagger(BaseTagger):
     def __init__(self):
@@ -14,11 +15,10 @@ class BIgramHMMTagger(BaseTagger):
         self.emissions[START_TAG][START_WORD] = 1.0
 
         self.tag_word_counter = defaultdict(lambda :defaultdict(int))
-        self.tags = set()
+        self.tags = {START_TAG, END_TAG, UNKNOWN_TAG}
         self.known_words = set()
 
     def fit(self, train_set):
-        self.tags.add(START_TAG)
         for sentence in train_set:
             prev_tag = START_TAG
             for word, tag in sentence:
@@ -30,7 +30,6 @@ class BIgramHMMTagger(BaseTagger):
                 prev_tag = tag
 
             self.bigram_tag_counter[prev_tag][END_TAG] += 1
-        self.tags.add(END_TAG)
 
         #probabilites
         for prev_tag, next_tags in self.bigram_tag_counter.items():
@@ -44,40 +43,33 @@ class BIgramHMMTagger(BaseTagger):
             for word, count in words.items():
                 self.emissions[tag][word] = count / total_count
 
+    def viterbi(self, sentence):
+        n = len(sentence)
+        viterbi_table = defaultdict(lambda :defaultdict(float))
+        backpointer = defaultdict(lambda :defaultdict(str))
+
+        viterbi_table[0][START_TAG] = 1.0
+
+        for t in range(1, n + 1):
+            word = sentence[t-1][0]
+            for tag in self.tags:
+                 max_prob = max(viterbi_table[t-1][prev_tag] * self.probabilites[prev_tag][tag] for prev_tag in self.tags)
+                 viterbi_table[t][tag] = max_prob * (self.emissions[tag][word] if word in self.known_words else 1.0)
+                 backpointer[t][tag] = max(self.tags, key=lambda prev_tag: viterbi_table[t-1][prev_tag] * self.probabilites[prev_tag][tag])
+
+        best_last_tag = max(viterbi_table[n], key=viterbi_table[n].get)
+        best_path = [best_last_tag]
+
+        for t in range(n, 0, -1):
+            best_path.insert(0, backpointer[t][best_path[0]])
+
+        return best_path
+
     def predict(self, test_set):
         predictions = []
         for sentence in test_set:
-            sentence.insert(0, (START_WORD, START_TAG))
-            n = len(sentence)
-            viterbi = defaultdict(lambda :defaultdict(float))
-            backpointer = defaultdict(lambda :defaultdict(str))
-
-            viterbi[0][START_TAG] = 1.0
-
-            for t, word_tag in enumerate(sentence):
-                word = word_tag[0]
-                for tag in self.tags:
-                    max_prob = 0
-                    best_prev_tag = None
-                    for prev_tag in self.tags:
-                        transition_prob = self.probabilites[prev_tag][tag]
-                        emission_prob = self.emissions[tag][word]
-                        prob = viterbi[t][prev_tag] * transition_prob * emission_prob
-                        if prob > max_prob:
-                            max_prob = prob
-                            best_prev_tag = prev_tag
-                    viterbi[t+1][tag] = max_prob
-                    backpointer[t+1][tag] = best_prev_tag
-
-            last_tag = max(viterbi[n], key=viterbi[n].get)
-            best_tags = [last_tag]
-
-            for t in range(n, 0, -1):
-                best_tags.insert(0, backpointer[t][last_tag])
-                last_tag = backpointer[t][last_tag]
-
-            predictions.append(list(zip(sentence, best_tags[1:])))
-
+            best_tags = self.viterbi(sentence)
+            predictions.append(list(zip([word for word, _ in sentence], best_tags[1:])))
         return predictions
 
     def accuracy(self, test_set, predictions):
@@ -87,7 +79,6 @@ class BIgramHMMTagger(BaseTagger):
         correct_unknown = 0
 
         for sentence, prediction in zip(test_set, predictions):
-            sentence.insert(0, (START_WORD, START_TAG))
             for (word, true_tag), (_, predicted_tag) in zip(sentence, prediction):
                 if word in self.known_words:
                     total_known += 1
@@ -106,8 +97,3 @@ class BIgramHMMTagger(BaseTagger):
         total_accuracy = correct_total / total
 
         return known_accuracy, unknown_accuracy, total_accuracy
-
-    # def error_rate(self,test_set):
-    #     predictions = self.predict(test_set)
-    #     model_accuracy = self.accuracy(test_set, predictions)
-    #     return
