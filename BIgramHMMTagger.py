@@ -19,16 +19,16 @@ class BIgramHMMTagger(BaseTagger):
         self.tags = {START_TAG, END_TAG, UNKNOWN_TAG}
         self.known_words = set()
 
-    def fit(self, train_set):
-        """
-        Compute transition and emission probabilities from the training set.
-        :param train_set:
-        """
+    def fit(self, train_set, apply_smoothing=False):
+
+        vocabulary = set()
+
         for sentence in train_set:
             prev_tag = START_TAG
             for word, tag in sentence:
                 # Add the word to the known words
                 self.known_words.add(word)
+                vocabulary.add(word)
                 self.tags.add(tag)
 
                 # Count bigram transitions
@@ -50,10 +50,17 @@ class BIgramHMMTagger(BaseTagger):
                 self.probabilites[prev_tag][next_tag] = count / total_count
 
         # Compute emission probabilities
+        vocab_size = len(vocabulary)  # Total unique words in the training set
         for tag, words in self.tag_word_counter.items():
             total_count = sum(words.values())
-            for word, count in words.items():
-                self.emissions[tag][word] = count / total_count
+            for word in vocabulary:
+                if apply_smoothing:
+                    smoothed_count = self.tag_word_counter[tag][word] + 1
+                    smoothed_total = total_count + vocab_size
+                    self.emissions[tag][word] = smoothed_count / smoothed_total
+                else:
+                    self.emissions[tag][word] = (
+                            self.tag_word_counter[tag][word] / total_count) if total_count > 0 else 0.0
 
     def viterbi(self, sentence):
         n = len(sentence)
