@@ -51,6 +51,9 @@ if __name__ == '__main__':
     print(f"Known: {smoothed_hmm_error_rates[0]:.4f}, Unknown: {smoothed_hmm_error_rates[1]:.4f},"
           f" Total: {smoothed_hmm_error_rates[2]:.4f}")
 
+    # Task E
+    
+
     # Compare Results
     print("\nComparison of Error Rates:")
     # Comparing B and C
