@@ -1,5 +1,8 @@
 import nltk
 from nltk.corpus import brown
+from sklearn.metrics import confusion_matrix
+
+import PseudoCreate
 
 nltk.download('brown')
 from sklearn.model_selection import train_test_split
@@ -17,6 +20,20 @@ def load_data():
     train_set, test_set = train_test_split(dataset, test_size=0.1)
     return train_set, test_set
 
+def run_model(model, train_set, test_set, model_name):
+    print(f"\nRunning {model_name}...")
+    model.fit(train_set)
+    model_errors_rate = model.error_rate(test_set)
+    print(f"{model_name} Error Rates:")
+    print(f"Known: {model_errors_rate[0]:.4f}, Unknown: {model_errors_rate[1]:.4f}, Total: {model_errors_rate[2]:.4f}")
+    return model_errors_rate, model
+
+def compare_models(comparison_title, first_model_error_rates, second_model_error_rates):
+    print("\n" + comparison_title)
+    print(f"Known Words Improvement: {first_model_error_rates[0] - second_model_error_rates[0]:.4f}")
+    print(f"Unknown Words Improvement: {first_model_error_rates[1] - second_model_error_rates[1]:.4f}")
+    print(f"Total Words Improvement: {first_model_error_rates[2] - second_model_error_rates[2]:.4f}")
+
 
 if __name__ == '__main__':
     # task A
@@ -25,49 +42,65 @@ if __name__ == '__main__':
     train_set, test_set = load_data()
 
     # task B
-
-    MLE_model = MLETagger()
-    MLE_model.fit(train_set)
-    mle_error_rates = MLE_model.error_rate(test_set)
-    print("MLE_model Tagger Error Rates:")
-    print(f"Known: {mle_error_rates[0]:.4f}, Unknown: {mle_error_rates[1]:.4f}, Total: {mle_error_rates[2]:.4f}")
+    mle_error_rates = run_model(MLETagger(), train_set, test_set, "MLE Tagger")[0]
 
     # Task C
 
     # Bigram HMM Tagger
-    print("\nRunning Bigram HMM Tagger...")
-    bigram_hmm_tagger = BIgramHMMTagger()
-    bigram_hmm_tagger.fit(train_set)
-    hmm_predictions = bigram_hmm_tagger.predict(test_set)
-    hmm_error_rates = bigram_hmm_tagger.error_rate(test_set)
-    print("Bigram HMM Tagger Error Rates:")
-    print(f"Known: {hmm_error_rates[0]:.4f}, Unknown: {hmm_error_rates[1]:.4f}, Total: {hmm_error_rates[2]:.4f}")
+    hmm_error_rates = run_model(BIgramHMMTagger(), train_set, test_set, "Bigram HMM Tagger")[0]
+
+    # Comparing C and B
+    compare_models("MLE and HMM comparison:", mle_error_rates, hmm_error_rates)
 
     # Task D
-    smoothed_hmm_tagger = BIgramHMMTagger()
-    smoothed_hmm_tagger.fit(train_set, apply_smoothing=True)
-    smoothed_hmm_error_rates = smoothed_hmm_tagger.error_rate(test_set)
-    print("Bigram HMM Tagger Error Rates:")
-    print(f"Known: {smoothed_hmm_error_rates[0]:.4f}, Unknown: {smoothed_hmm_error_rates[1]:.4f},"
-          f" Total: {smoothed_hmm_error_rates[2]:.4f}")
 
-    # Task E
-    
-
-    # Compare Results
-    print("\nComparison of Error Rates:")
-    # Comparing B and C
-    print(f"Known Words Improvement: {mle_error_rates[0] - hmm_error_rates[0]:.4f}")
-    print(f"Unknown Words Improvement: {mle_error_rates[1] - hmm_error_rates[1]:.4f}")
-    print(f"Total Words Improvement: {mle_error_rates[2] - hmm_error_rates[2]:.4f}")
+    # Add One Smoothing
+    smoothed_hmm_error_rates = run_model(BIgramHMMTagger(apply_smoothing=True), train_set, test_set, "Bigram HMM Tagger With Smoothing")[0]
 
     # Comparing B and D
-    print(f"Known Words Improvement: {mle_error_rates[0] - smoothed_hmm_error_rates[0]:.4f}")
-    print(f"Unknown Words Improvement: {mle_error_rates[1] - smoothed_hmm_error_rates[1]:.4f}")
-    print(f"Total Words Improvement: {mle_error_rates[2] - smoothed_hmm_error_rates[2]:.4f}")
+    compare_models("MLE and Smoothing HMM comparison:", mle_error_rates, smoothed_hmm_error_rates)
 
     # Comparing C and D
-    print(f"Known Words Improvement: {hmm_error_rates[0] - smoothed_hmm_error_rates[0]:.4f}")
-    print(f"Unknown Words Improvement: {hmm_error_rates[1] - smoothed_hmm_error_rates[1]:.4f}")
-    print(f"Total Words Improvement: {hmm_error_rates[2] - smoothed_hmm_error_rates[2]:.4f}")
+    compare_models("HMM and Smoothing HMM comparison:", hmm_error_rates, smoothed_hmm_error_rates)
+
+    # Task E
+
+    #Pseudo Words
+    pseudo_map = PseudoCreate.pseudo_set(train_set)
+    with_pseudo_error_rates = run_model(BIgramHMMTagger(pseudo_map), train_set, test_set, "Bigram HMM Tagger With Pseudo Words")[0]
+
+    # Comparing B and E1
+    compare_models("MLE and Pesudo HMM comparison:", mle_error_rates, with_pseudo_error_rates)
+
+    # Comparing C and E1
+    compare_models("HMM and Pesudo HMM comparison:", hmm_error_rates, with_pseudo_error_rates)
+
+    # Comparing D and E1
+    compare_models("Smoothing HMM and Pesudo HMM comparison:", smoothed_hmm_error_rates, with_pseudo_error_rates)
+
+    # Add One Smoothing
+    pseudo_map = PseudoCreate.pseudo_set(train_set)
+    with_pseudo_smoothed_error_rates, with_pseudo_smoothed_bigram_hmm_tagger = run_model(BIgramHMMTagger(pseudo_map, apply_smoothing=True), train_set, test_set, "Bigram HMM Tagger With Pseudo Words + Smoothing")
+
+    # Comparing B and E2
+    compare_models("MLE and Pseudo + Smoothing HMM comparison:", mle_error_rates, with_pseudo_smoothed_error_rates)
+
+    # Comparing C and E2
+    compare_models("HMM and Pseudo + Smoothing HMM comparison:", hmm_error_rates, with_pseudo_smoothed_error_rates)
+
+    # Comparing D and E2
+    compare_models("Smoothing HMM and Pseudo + Smoothing comparison:", smoothed_hmm_error_rates,
+                   with_pseudo_smoothed_error_rates)
+
+    # Comparing E1 and E2
+    compare_models("Pseudo HMM and Pseudo + Smoothing HMM comparison:", with_pseudo_error_rates,
+                   with_pseudo_smoothed_error_rates)
+
+    # Confusion Matrix
+    confusion_matrix = with_pseudo_smoothed_bigram_hmm_tagger.create_confusion_matrix(test_set)
+    top_errors = with_pseudo_smoothed_bigram_hmm_tagger.top_confusion_errors(confusion_matrix, top_n=10)
+    print("\nTop 10 Errors from Confusion Matrix Are: ")
+    print(*top_errors, sep="\n")
+
+
 

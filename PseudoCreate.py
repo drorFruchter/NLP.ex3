@@ -2,19 +2,19 @@ import re
 
 def create_pseudo(word):
     if re.compile("[0-9][0-9]").fullmatch(word):
-        return "twoDigitYear"
+        return "shortYear"
     if re.compile("[0-2][0-9][0-9][0-9]").fullmatch(word):
-        return "fourDigitYear"
+        return "longYear"
     if re.compile("[0-3]?[0-9]\/[1-2]?[0-9]").fullmatch(word):
-        return "dateShort"
+        return "shortDate"
     if re.compile("[0-3]?[0-9]\/[1-2]?[0-9]\/[0-9][0-9]").fullmatch(word):
-        return "dateLong"
+        return "longDate"
     if re.compile("[0-9]+\,?[0-9]*\.?[0-9]+").fullmatch(word):
-        return "MonetaryAmount"
+        return "amount"
     if re.compile("[0-9]?[0-9]\.[0-9]+").fullmatch(word):
-        return "MonetaryAmountOrPercentage"
+        return "amountOrPrecent"
     if re.compile("([0-9]+\.)+[0-9]+").match(word):
-        return "versionCode"
+        return "version"
     if re.compile("\$[0-9]+(\,[0-9]+)*\.?[0-9]*").match(word):
         return "price"
     if re.compile("\$[012][0-9]?[0-9][0-9]").match(word):
@@ -37,6 +37,7 @@ def create_pseudo(word):
         return "shortWriting"
     if re.compile("([A-Za-z0-9]+\-)+[A-Za-z0-9]+").match(word):
         return "phrase"
+    return "rare"
 
 def pseudo_set(train_set):
     pseudo = {}
@@ -47,13 +48,11 @@ def pseudo_set(train_set):
         for word, tag in sentence:
             freq[word] = freq.get(word, 0) + 1
     
-    threshold = 4
-
+    threshold = 3
     for sentence in train_set:
         for word, tag in sentence:
             if freq[word] < threshold:
-                pseudo_word = create_pseudo(word)
-                pseudo[word] = pseudo_word
+                pseudo[word] =  create_pseudo(word)
             else:
                 pseudo[word] = word
     return pseudo
